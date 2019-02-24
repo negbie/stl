@@ -2,12 +2,12 @@ package stl
 
 import "math"
 
-func loessSTL(x []int, y []float64, span int, degree int, m []int, weights []float64, jump int) []float64 {
+func loessSTL(x, y []float64, span int, degree int, m []int, weights []float64, jump int) []float64 {
 	n := len(y)
 	if x == nil {
-		x = make([]int, n)
+		x = make([]float64, n)
 		for i := 0; i < n; i++ {
-			x[i] = i + 1
+			x[i] = float64(i + 1)
 		}
 	}
 
@@ -64,22 +64,22 @@ func loessSTL(x []int, y []float64, span int, degree int, m []int, weights []flo
 		}
 	}
 
-	maxDist := make([]int, lenM)
+	maxDist := make([]float64, lenM)
 	aa := 0.0
 	bb := 0.0
 	for i := 0; i < lenM; i++ {
-		aa = math.Abs(float64(m[i] - x[lIdx[i]]))
-		bb = math.Abs(float64(x[rIdx[i]] - m[i]))
+		aa = math.Abs(float64(m[i]) - x[lIdx[i]])
+		bb = math.Abs(x[rIdx[i]] - float64(m[i]))
 		if aa > bb {
-			maxDist[i] = int(aa)
+			maxDist[i] = aa
 		} else {
-			maxDist[i] = int(bb)
+			maxDist[i] = bb
 		}
 	}
 
 	if span > n {
 		for i := 0; i < len(maxDist); i++ {
-			maxDist[i] = maxDist[i] + (span-n)/2
+			maxDist[i] = maxDist[i] + float64((span-n)/2)
 		}
 	}
 	result, slopes := cLoess(x, y, degree, span, weights, m, lIdx, maxDist)
@@ -98,9 +98,7 @@ func loessSTL(x []int, y []float64, span int, degree int, m []int, weights []flo
 	return res
 }
 
-func cLoess(xx []int, yy []float64, degree, span int, ww []float64, m, lIdx, maxDist []int) ([]float64, []float64) {
-	var r, tmp1, tmp2 float64
-	var i, j int
+func cLoess(xx, yy []float64, degree, span int, ww []float64, m, lIdx []int, maxDist []float64) ([]float64, []float64) {
 
 	n := len(xx)
 	nM := len(m)
@@ -115,7 +113,11 @@ func cLoess(xx []int, yy []float64, degree, span int, ww []float64, m, lIdx, max
 	slopes := make([]float64, nM)
 
 	// variables for storing determinant intermediate values
-	var a, b, c, d, e, a1, b1, c1, a2, b2, c2, det float64
+	var (
+		i, j                                       int
+		r, tmp1, tmp2                              float64
+		a, b, c, d, e, a1, b1, c1, a2, b2, c2, det float64
+	)
 
 	if span > n {
 		span = n
@@ -128,7 +130,7 @@ func cLoess(xx []int, yy []float64, degree, span int, ww []float64, m, lIdx, max
 		// get weights, x, and a
 		for j = 0; j < span; j++ {
 			w[j] = 0.0
-			x[j] = float64(xx[lIdx[i]+j] - m[i])
+			x[j] = xx[lIdx[i]+j] - float64(m[i])
 
 			if x[j] > 0 {
 				r = x[j]
@@ -137,7 +139,7 @@ func cLoess(xx []int, yy []float64, degree, span int, ww []float64, m, lIdx, max
 			}
 
 			// tricube
-			tmp1 = r / float64(maxDist[i])
+			tmp1 = r / maxDist[i]
 			// manual multiplication is much faster than pow()
 			tmp2 = 1.0 - tmp1*tmp1*tmp1
 			w[j] = tmp2 * tmp2 * tmp2
@@ -152,7 +154,7 @@ func cLoess(xx []int, yy []float64, degree, span int, ww []float64, m, lIdx, max
 			// TODO: make sure denominator is not 0
 			a1 = 1 / a
 			for j = 0; j < span; j++ {
-				// l_i[j] = w[j] * a1;
+				// lIdx[j] = w[j] * a1;
 				result[i] = result[i] + w[j]*a1*yy[lIdx[i]+j]
 			}
 		} else {
