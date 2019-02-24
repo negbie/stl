@@ -1,76 +1,243 @@
 package stl
 
+import (
+	"errors"
+	"math"
+)
+
 type Stl struct {
-	periodPoints   int
-	dataPoints     int
-	iter           int
-	robustnessIter int
-	sWindow        int
-	lWindow        int
-	tWindow        int
-	sDegree        int
-	lDegree        int
-	tDegree        int
-	sJump          int
-	lJump          int
-	tJump          int
-	critFreq       float64
+	outer    int
+	inner    int
+	sWindow  int
+	lWindow  int
+	tWindow  int
+	sDegree  int
+	lDegree  int
+	tDegree  int
+	sJump    int
+	lJump    int
+	tJump    int
+	critFreq float64
 }
 
-type Option func(*Stl)
+func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []float64, []float64, error) {
+	tl := len(series)
+	if tl < 11 {
+		return nil, nil, nil, errors.New("series length must be at least 11")
+	}
+	if seasonality < 5 {
+		return nil, nil, nil, errors.New("seasonality must be at least 5")
+	}
+	if tl <= 2*seasonality {
+		return nil, nil, nil, errors.New("series length must be > 2 * seasonality")
+	}
 
-func PeriodPoints(periodPoints int) Option {
-	return func(args *Stl) { args.periodPoints = periodPoints }
+	// Default Options
+	s := &Stl{
+		outer:    15,
+		inner:    1,
+		sWindow:  -1,
+		tWindow:  -1,
+		lWindow:  -1,
+		sDegree:  1,
+		tDegree:  1,
+		lDegree:  1,
+		sJump:    -1,
+		tJump:    -1,
+		lJump:    -1,
+		critFreq: 0.05,
+	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s.decompose(series, seasonality)
 }
 
-func DataPoints(dataPoints int) Option {
-	return func(args *Stl) { args.dataPoints = dataPoints }
+func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64, []float64, error) {
+	n := len(series)
+	numObsPerPeriod := seasonality
+
+	trend := make([]float64, n)
+	seasonal := make([]float64, n)
+	remainder := make([]float64, n)
+	for i := 0; i < n; i++ {
+		trend[i] = 0.0
+		seasonal[i] = 0.0
+		remainder[i] = 0.0
+	}
+
+	if s.lWindow == -1 {
+		s.lWindow = nextOdd(float64(numObsPerPeriod))
+	} else {
+		s.lWindow = nextOdd(float64(s.lWindow))
+	}
+
+	if s.sWindow == -1 {
+		s.sWindow = 10 * (n + 1)
+	}
+	if s.sDegree == -1 {
+		s.sDegree = 0
+	}
+	if s.sJump == -1 {
+		s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
+	}
+	if s.tWindow == -1 {
+		s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, numObsPerPeriod, s.critFreq)
+	}
+
+	if s.sJump == -1 {
+		s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
+	}
+	if s.tJump == -1 {
+		s.tJump = int(math.Ceil(float64(s.tWindow) / 10.0))
+	}
+	if s.lJump == -1 {
+		s.lJump = int(math.Ceil(float64(s.lWindow) / 10.0))
+	}
+
+	startIdx := numObsPerPeriod
+
+	//cycleSubIndices will keep track of what part of the seasonal each observation belongs to
+	cycleSubIndices := make([]int, n)
+	weight := make([]float64, n)
+	for i := 0; i < n; i++ {
+		cycleSubIndices[i] = i%numObsPerPeriod + 1
+		weight[i] = 1.0
+	}
+	// subLabels !!
+	lenC := n + 2*numObsPerPeriod
+	C := make([]float64, lenC)
+	D := make([]float64, n)
+	detrend := make([]float64, n)
+
+	tempSize := int(math.Ceil(float64(n)/float64(numObsPerPeriod)) / 2)
+	cycleSub := make([]float64, tempSize)
+	subWeights := make([]float64, tempSize)
+	cs1 := make([]int, numObsPerPeriod)
+	cs2 := make([]int, numObsPerPeriod)
+
+	for i := 0; i < numObsPerPeriod; i++ {
+		cs1[i] = cycleSubIndices[i]
+		cs2[i] = cycleSubIndices[n-numObsPerPeriod+i]
+	}
+
+	ma3 := make([]float64, n)
+	L := make([]float64, n)
+	ljump := s.lJump
+	tjump := s.tJump
+	lenLev := int(math.Ceil(float64(n) / float64(ljump)))
+	lenTev := int(math.Ceil(float64(n) / float64(tjump)))
+	lEv := make([]int, lenLev)
+	tEv := make([]int, lenTev)
+	weightMeanAns := 0.0
+
+	for oIter := 1; oIter <= s.outer; oIter++ {
+		for iIter := 1; iIter <= s.inner; iIter++ {
+			/** Step 1: detrending */
+			for i := 0; i < n; i++ {
+				detrend[i] = series[i] - trend[i]
+			}
+
+			/** Step 2: smoothing of cycle-subseries */
+			for i := 0; i < numObsPerPeriod; i++ {
+				cycleSub = []float64{}
+				subWeights = []float64{}
+				for j := i; j < n; j += numObsPerPeriod {
+					if cycleSubIndices[j] == i+1 {
+						cycleSub = append(cycleSub, detrend[j])
+						subWeights = append(subWeights, weight[j])
+					}
+				}
+				/*
+				 C[c(cs1, cycleSubIndices, cs2) == i] <- rep(weighted.mean(cycleSub,
+				 w = w[cycleSubIndices == i], na.rm = TRUE), cycleSub.length + 2)
+				*/
+				weightMeanAns = weightMean(cycleSub, subWeights)
+				for j := i; j < numObsPerPeriod; j += numObsPerPeriod {
+					if cs1[j] == i+1 {
+						C[j] = weightMeanAns
+					}
+				}
+
+				for j := i; j < n; j += numObsPerPeriod {
+					if cycleSubIndices[j] == i+1 {
+						C[j+numObsPerPeriod] = weightMeanAns
+					}
+				}
+
+				for j := 0; j < numObsPerPeriod; j++ {
+					if cs2[j] == i+1 {
+						C[j+numObsPerPeriod+n] = weightMeanAns
+					}
+				}
+			}
+
+			/** Step 3: Low-pass filtering of collection of all the cycle-subseries
+			# moving averages*/
+			ma3 = cMa(C, numObsPerPeriod)
+
+			for i, j := 0, 0; i < lenLev; i, j = i+1, j+ljump {
+				lEv[i] = j + 1
+			}
+
+			if lEv[lenLev-1] != n {
+				tempLev := make([]int, lenLev+1)
+				copy(tempLev, lEv)
+				tempLev[lenLev] = n
+				L = loessSTL(nil, ma3, s.lWindow, s.lDegree, tempLev, weight, s.lJump)
+			} else {
+				L = loessSTL(nil, ma3, s.lWindow, s.lDegree, lEv, weight, s.lJump)
+			}
+
+			/** Step 4: Detrend smoothed cycle-subseries */
+			/** Step 5: Deseasonalize */
+			for i := 0; i < n; i++ {
+				seasonal[i] = C[startIdx+i] - L[i]
+				D[i] = series[i] - seasonal[i]
+			}
+
+			/** Step 6: Trend Smoothing */
+			for i, j := 0, 0; i < lenTev; i, j = i+1, j+tjump {
+				tEv[i] = j + 1
+			}
+
+			if tEv[lenTev-1] != n {
+				tempTev := make([]int, lenTev+1)
+				copy(tempTev, tEv)
+				tempTev[lenTev] = n
+				trend = loessSTL(nil, D, s.tWindow, s.tDegree, tempTev, weight, s.tJump)
+			} else {
+				trend = loessSTL(nil, D, s.tWindow, s.tDegree, tEv, weight, s.tJump)
+			}
+		}
+	}
+
+	for i := 0; i < n; i++ {
+		remainder[i] = series[i] - trend[i] - seasonal[i]
+	}
+
+	return trend, seasonal, remainder, nil
 }
 
-func Iter(iter int) Option {
-	return func(args *Stl) { args.iter = iter }
+func nextOdd(x float64) int {
+	xx := int(math.Round(x))
+	if xx%2 == 0 {
+		return xx + 1
+	}
+	return xx
 }
 
-func RobustnessIter(robustnessIter int) Option {
-	return func(args *Stl) { args.robustnessIter = robustnessIter }
-}
-
-func SWindow(sWindow int) Option {
-	return func(args *Stl) { args.sWindow = sWindow }
-}
-
-func LWindow(lWindow int) Option {
-	return func(args *Stl) { args.lWindow = lWindow }
-}
-
-func TWindow(tWindow int) Option {
-	return func(args *Stl) { args.tWindow = tWindow }
-}
-
-func SDegree(sDegree int) Option {
-	return func(args *Stl) { args.sDegree = sDegree }
-}
-
-func LDegree(lDegree int) Option {
-	return func(args *Stl) { args.lDegree = lDegree }
-}
-
-func TDegree(tDegree int) Option {
-	return func(args *Stl) { args.tDegree = tDegree }
-}
-
-func SJump(sJump int) Option {
-	return func(args *Stl) { args.sJump = sJump }
-}
-
-func LJump(lJump int) Option {
-	return func(args *Stl) { args.lJump = lJump }
-}
-
-func TJump(tJump int) Option {
-	return func(args *Stl) { args.tJump = tJump }
-}
-
-func CritFreq(critFreq float64) Option {
-	return func(args *Stl) { args.critFreq = critFreq }
+func weightMean(c []float64, w []float64) float64 {
+	sum := 0.0
+	sumW := 0.0
+	len := len(c)
+	for i := 0; i < len; i++ {
+		if !math.IsNaN(c[i]) {
+			sum += (c[i] * w[i])
+			sumW += w[i]
+		}
+	}
+	return sum / sumW
 }
