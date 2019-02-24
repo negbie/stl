@@ -2,6 +2,7 @@ package stl
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -34,8 +35,8 @@ func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []
 
 	// Default Options
 	s := &Stl{
-		outer:    15,
-		inner:    1,
+		outer:    1,
+		inner:    2,
 		sWindow:  -1,
 		tWindow:  -1,
 		lWindow:  -1,
@@ -51,6 +52,8 @@ func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []
 	for _, opt := range opts {
 		opt(s)
 	}
+
+	fmt.Println(s.outer)
 
 	return s.decompose(series, seasonality)
 }
@@ -74,17 +77,14 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 		s.lWindow = nextOdd(float64(s.lWindow))
 	}
 
-	if s.sWindow == -1 {
-		s.sWindow = 10 * (n + 1)
-	}
-	if s.sDegree == -1 {
-		s.sDegree = 0
-	}
-	if s.sJump == -1 {
-		s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
-	}
+	s.sWindow = 10*n + 1
+	s.sDegree = 0
+	s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
+
 	if s.tWindow == -1 {
 		s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, numObsPerPeriod, s.critFreq)
+	} else {
+		s.tWindow = nextOdd(float64(s.lWindow))
 	}
 
 	if s.sJump == -1 {
