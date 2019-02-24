@@ -1,8 +1,10 @@
 package stl
 
-type option func(*stl)
+// Option is for functional options.
+type Option func(*stl)
 
-func OuterLoop(outer int) option {
+// OuterLoop sets outer var.
+func OuterLoop(outer int) Option {
 	return func(args *stl) {
 		args.outer = outer
 		if outer < 0 {
@@ -11,7 +13,8 @@ func OuterLoop(outer int) option {
 	}
 }
 
-func InnerLoop(inner int) option {
+// InnerLoop sets inner var.
+func InnerLoop(inner int) Option {
 	return func(args *stl) {
 		args.inner = inner
 		if inner < 0 {
@@ -20,7 +23,8 @@ func InnerLoop(inner int) option {
 	}
 }
 
-func SWindow(sWindow int) option {
+// SWindow sets sWindow var.
+func SWindow(sWindow int) Option {
 	return func(args *stl) {
 		args.sWindow = sWindow
 		if sWindow < 0 {
@@ -29,7 +33,8 @@ func SWindow(sWindow int) option {
 	}
 }
 
-func TWindow(tWindow int) option {
+// TWindow sets tWindow var.
+func TWindow(tWindow int) Option {
 	return func(args *stl) {
 		args.tWindow = tWindow
 		if tWindow < 0 {
@@ -38,7 +43,8 @@ func TWindow(tWindow int) option {
 	}
 }
 
-func LWindow(lWindow int) option {
+// LWindow sets lWindow var.
+func LWindow(lWindow int) Option {
 	return func(args *stl) {
 		args.lWindow = lWindow
 		if lWindow < 0 {
@@ -47,7 +53,8 @@ func LWindow(lWindow int) option {
 	}
 }
 
-func SDegree(sDegree int) option {
+// SDegree sets sDegree var.
+func SDegree(sDegree int) Option {
 	return func(args *stl) {
 		args.sDegree = sDegree
 		if sDegree < 0 || sDegree > 2 {
@@ -56,7 +63,8 @@ func SDegree(sDegree int) option {
 	}
 }
 
-func TDegree(tDegree int) option {
+// TDegree sets tDegree var.
+func TDegree(tDegree int) Option {
 	return func(args *stl) {
 		args.tDegree = tDegree
 		if tDegree < 0 || tDegree > 2 {
@@ -65,7 +73,8 @@ func TDegree(tDegree int) option {
 	}
 }
 
-func LDegree(lDegree int) option {
+// LDegree sets lDegree var.
+func LDegree(lDegree int) Option {
 	return func(args *stl) {
 		args.lDegree = lDegree
 		if lDegree < 0 || lDegree > 2 {
@@ -74,7 +83,8 @@ func LDegree(lDegree int) option {
 	}
 }
 
-func SJump(sJump int) option {
+// SJump sets sJump var.
+func SJump(sJump int) Option {
 	return func(args *stl) {
 		args.sJump = sJump
 		if sJump < 0 {
@@ -83,7 +93,8 @@ func SJump(sJump int) option {
 	}
 }
 
-func TJump(tJump int) option {
+// TJump sets tJump var.
+func TJump(tJump int) Option {
 	return func(args *stl) {
 		args.tJump = tJump
 		if tJump < 0 {
@@ -92,7 +103,8 @@ func TJump(tJump int) option {
 	}
 }
 
-func LJump(lJump int) option {
+// LJump sets lJump var.
+func LJump(lJump int) Option {
 	return func(args *stl) {
 		args.lJump = lJump
 		if lJump < 0 {
@@ -101,7 +113,8 @@ func LJump(lJump int) option {
 	}
 }
 
-func CritFreq(critFreq float64) option {
+// CritFreq sets critFreq var.
+func CritFreq(critFreq float64) Option {
 	return func(args *stl) {
 		args.critFreq = critFreq
 		if critFreq < 0 {

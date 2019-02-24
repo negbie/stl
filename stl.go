@@ -20,7 +20,8 @@ type stl struct {
 	critFreq float64
 }
 
-func Decompose(series []float64, seasonality int, opts ...option) ([]float64, []float64, []float64, error) {
+// Decompose performs a STL decomposition.
+func Decompose(series []float64, seasonality int, opts ...Option) (trend, seasonal, remainder []float64, err error) {
 	tl := len(series)
 	if tl < 11 {
 		return nil, nil, nil, errors.New("series length must be at least 11")
