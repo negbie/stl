@@ -140,7 +140,6 @@ func cLoess(xx, yy []float64, degree, span int, ww []float64, m, lIdx []int, max
 
 			// tricube
 			tmp1 = r / maxDist[i]
-			// manual multiplication is much faster than pow()
 			tmp2 = 1.0 - tmp1*tmp1*tmp1
 			w[j] = tmp2 * tmp2 * tmp2
 

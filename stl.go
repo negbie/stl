@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-type Stl struct {
+type stl struct {
 	outer    int
 	inner    int
 	sWindow  int
@@ -20,7 +20,7 @@ type Stl struct {
 	critFreq float64
 }
 
-func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []float64, []float64, error) {
+func Decompose(series []float64, seasonality int, opts ...option) ([]float64, []float64, []float64, error) {
 	tl := len(series)
 	if tl < 11 {
 		return nil, nil, nil, errors.New("series length must be at least 11")
@@ -33,7 +33,7 @@ func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []
 	}
 
 	// Default Options
-	s := &Stl{
+	s := &stl{
 		outer:    1,
 		inner:    2,
 		sWindow:  -1,
@@ -55,7 +55,7 @@ func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []
 	return s.decompose(series, seasonality)
 }
 
-func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64, []float64, error) {
+func (s *stl) decompose(series []float64, seasonality int) ([]float64, []float64, []float64, error) {
 	nSeries := len(series)
 	nPeriod := seasonality
 

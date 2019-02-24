@@ -1,1 +1,2 @@
 # stl
+`package stl` implements Seasonal-Trend Decompositions by LOESS of time series. It is based on [Cleveland et al (1990)](https://search.proquest.com/openview/cc5001e8a0978a6c029ae9a41af00f21/1?pq-origsite=gscholar&cbl=105444). It only uses Go std lib functions and has no external dependencies.
