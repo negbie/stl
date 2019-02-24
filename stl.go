@@ -2,7 +2,6 @@ package stl
 
 import (
 	"errors"
-	"fmt"
 	"math"
 )
 
@@ -53,38 +52,36 @@ func Decompose(series []float64, seasonality int, opts ...Option) ([]float64, []
 		opt(s)
 	}
 
-	fmt.Println(s.outer)
-
 	return s.decompose(series, seasonality)
 }
 
 func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64, []float64, error) {
-	n := len(series)
-	numObsPerPeriod := seasonality
+	nSeries := len(series)
+	nPeriod := seasonality
 
-	trend := make([]float64, n)
-	seasonal := make([]float64, n)
-	remainder := make([]float64, n)
-	for i := 0; i < n; i++ {
+	trend := make([]float64, nSeries)
+	seasonal := make([]float64, nSeries)
+	remainder := make([]float64, nSeries)
+	for i := 0; i < nSeries; i++ {
 		trend[i] = 0.0
 		seasonal[i] = 0.0
 		remainder[i] = 0.0
 	}
 
 	if s.lWindow == -1 {
-		s.lWindow = nextOdd(float64(numObsPerPeriod))
+		s.lWindow = nextOdd(float64(nPeriod))
 	} else {
 		s.lWindow = nextOdd(float64(s.lWindow))
 	}
 
-	s.sWindow = 10*n + 1
+	s.sWindow = 10*nSeries + 1
 	s.sDegree = 0
 	s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
 
 	if s.tWindow == -1 {
-		s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, numObsPerPeriod, s.critFreq)
+		s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, nPeriod, s.critFreq)
 	} else {
-		s.tWindow = nextOdd(float64(s.lWindow))
+		s.tWindow = nextOdd(float64(s.tWindow))
 	}
 
 	if s.sJump == -1 {
@@ -97,38 +94,39 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 		s.lJump = int(math.Ceil(float64(s.lWindow) / 10.0))
 	}
 
-	startIdx := numObsPerPeriod
+	startIdx := nPeriod
 
 	//cycleSubIndices will keep track of what part of the seasonal each observation belongs to
-	cycleSubIndices := make([]int, n)
-	weight := make([]float64, n)
-	for i := 0; i < n; i++ {
-		cycleSubIndices[i] = i%numObsPerPeriod + 1
+	cycleSubIndices := make([]int, nSeries)
+	weight := make([]float64, nSeries)
+
+	for i := 0; i < nSeries; i++ {
+		cycleSubIndices[i] = i%nPeriod + 1
 		weight[i] = 1.0
 	}
-	// subLabels !!
-	lenC := n + 2*numObsPerPeriod
-	C := make([]float64, lenC)
-	D := make([]float64, n)
-	detrend := make([]float64, n)
 
-	tempSize := int(math.Ceil(float64(n)/float64(numObsPerPeriod)) / 2)
+	lenC := nSeries + 2*nPeriod
+	C := make([]float64, lenC)
+	D := make([]float64, nSeries)
+	detrend := make([]float64, nSeries)
+
+	tempSize := int(math.Ceil(float64(nSeries)/float64(nPeriod)) / 2)
 	cycleSub := make([]float64, tempSize)
 	subWeights := make([]float64, tempSize)
-	cs1 := make([]int, numObsPerPeriod)
-	cs2 := make([]int, numObsPerPeriod)
+	cs1 := make([]int, nPeriod)
+	cs2 := make([]int, nPeriod)
 
-	for i := 0; i < numObsPerPeriod; i++ {
+	for i := 0; i < nPeriod; i++ {
 		cs1[i] = cycleSubIndices[i]
-		cs2[i] = cycleSubIndices[n-numObsPerPeriod+i]
+		cs2[i] = cycleSubIndices[nSeries-nPeriod+i]
 	}
 
-	ma3 := make([]float64, n)
-	L := make([]float64, n)
+	ma3 := make([]float64, nSeries)
+	L := make([]float64, nSeries)
 	ljump := s.lJump
 	tjump := s.tJump
-	lenLev := int(math.Ceil(float64(n) / float64(ljump)))
-	lenTev := int(math.Ceil(float64(n) / float64(tjump)))
+	lenLev := int(math.Ceil(float64(nSeries) / float64(ljump)))
+	lenTev := int(math.Ceil(float64(nSeries) / float64(tjump)))
 	lEv := make([]int, lenLev)
 	tEv := make([]int, lenTev)
 	weightMeanAns := 0.0
@@ -136,15 +134,15 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 	for oIter := 1; oIter <= s.outer; oIter++ {
 		for iIter := 1; iIter <= s.inner; iIter++ {
 			/** Step 1: detrending */
-			for i := 0; i < n; i++ {
+			for i := 0; i < nSeries; i++ {
 				detrend[i] = series[i] - trend[i]
 			}
 
 			/** Step 2: smoothing of cycle-subseries */
-			for i := 0; i < numObsPerPeriod; i++ {
+			for i := 0; i < nPeriod; i++ {
 				cycleSub = []float64{}
 				subWeights = []float64{}
-				for j := i; j < n; j += numObsPerPeriod {
+				for j := i; j < nSeries; j += nPeriod {
 					if cycleSubIndices[j] == i+1 {
 						cycleSub = append(cycleSub, detrend[j])
 						subWeights = append(subWeights, weight[j])
@@ -155,37 +153,37 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 				 w = w[cycleSubIndices == i], na.rm = TRUE), cycleSub.length + 2)
 				*/
 				weightMeanAns = weightMean(cycleSub, subWeights)
-				for j := i; j < numObsPerPeriod; j += numObsPerPeriod {
+				for j := i; j < nPeriod; j += nPeriod {
 					if cs1[j] == i+1 {
 						C[j] = weightMeanAns
 					}
 				}
 
-				for j := i; j < n; j += numObsPerPeriod {
+				for j := i; j < nSeries; j += nPeriod {
 					if cycleSubIndices[j] == i+1 {
-						C[j+numObsPerPeriod] = weightMeanAns
+						C[j+nPeriod] = weightMeanAns
 					}
 				}
 
-				for j := 0; j < numObsPerPeriod; j++ {
+				for j := 0; j < nPeriod; j++ {
 					if cs2[j] == i+1 {
-						C[j+numObsPerPeriod+n] = weightMeanAns
+						C[j+nPeriod+nSeries] = weightMeanAns
 					}
 				}
 			}
 
 			/** Step 3: Low-pass filtering of collection of all the cycle-subseries
 			# moving averages*/
-			ma3 = cMa(C, numObsPerPeriod)
+			ma3 = cMa(C, nPeriod)
 
 			for i, j := 0, 0; i < lenLev; i, j = i+1, j+ljump {
 				lEv[i] = j + 1
 			}
 
-			if lEv[lenLev-1] != n {
+			if lEv[lenLev-1] != nSeries {
 				tempLev := make([]int, lenLev+1)
 				copy(tempLev, lEv)
-				tempLev[lenLev] = n
+				tempLev[lenLev] = nSeries
 				L = loessSTL(nil, ma3, s.lWindow, s.lDegree, tempLev, weight, s.lJump)
 			} else {
 				L = loessSTL(nil, ma3, s.lWindow, s.lDegree, lEv, weight, s.lJump)
@@ -193,7 +191,7 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 
 			/** Step 4: Detrend smoothed cycle-subseries */
 			/** Step 5: Deseasonalize */
-			for i := 0; i < n; i++ {
+			for i := 0; i < nSeries; i++ {
 				seasonal[i] = C[startIdx+i] - L[i]
 				D[i] = series[i] - seasonal[i]
 			}
@@ -203,10 +201,10 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 				tEv[i] = j + 1
 			}
 
-			if tEv[lenTev-1] != n {
+			if tEv[lenTev-1] != nSeries {
 				tempTev := make([]int, lenTev+1)
 				copy(tempTev, tEv)
-				tempTev[lenTev] = n
+				tempTev[lenTev] = nSeries
 				trend = loessSTL(nil, D, s.tWindow, s.tDegree, tempTev, weight, s.tJump)
 			} else {
 				trend = loessSTL(nil, D, s.tWindow, s.tDegree, tEv, weight, s.tJump)
@@ -214,7 +212,7 @@ func (s *Stl) decompose(series []float64, seasonality int) ([]float64, []float64
 		}
 	}
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < nSeries; i++ {
 		remainder[i] = series[i] - trend[i] - seasonal[i]
 	}
 
