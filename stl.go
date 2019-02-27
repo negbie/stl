@@ -113,8 +113,6 @@ func (s *stl) decompose(series []float64, seasonality int) ([]float64, []float64
 	detrend := make([]float64, nSeries)
 
 	tempSize := int(math.Ceil(float64(nSeries)/float64(nPeriod)) / 2)
-	cycleSub := make([]float64, tempSize)
-	subWeights := make([]float64, tempSize)
 	cs1 := make([]int, nPeriod)
 	cs2 := make([]int, nPeriod)
 
@@ -142,8 +140,8 @@ func (s *stl) decompose(series []float64, seasonality int) ([]float64, []float64
 
 			/** Step 2: smoothing of cycle-subseries */
 			for i := 0; i < nPeriod; i++ {
-				cycleSub = []float64{}
-				subWeights = []float64{}
+				cycleSub := make([]float64, tempSize)
+				subWeights := make([]float64, tempSize)
 				for j := i; j < nSeries; j += nPeriod {
 					if cycleSubIndices[j] == i+1 {
 						cycleSub = append(cycleSub, detrend[j])
