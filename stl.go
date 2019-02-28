@@ -53,6 +53,7 @@ func Decompose(series []float64, seasonality int, opts ...Option) (trend, season
 		opt(s)
 	}
 
+	removeIsNaNByAvg(series)
 	return s.decompose(series, seasonality)
 }
 
@@ -245,4 +246,27 @@ func weightMean(c []float64, w []float64) float64 {
 		}
 	}
 	return sum / sumW
+}
+
+func removeIsNaNByAvg(arr []float64) {
+	n := len(arr)
+	for i := 0; i < n; i++ {
+		if math.IsNaN(arr[i]) {
+			sum := 0.0
+			count := 0
+			if i-1 >= 0 && !math.IsNaN(arr[i-1]) {
+				sum += arr[i-1]
+				count++
+			}
+			if i+1 < n && !math.IsNaN(arr[i+1]) {
+				sum += arr[i+1]
+				count++
+			}
+			if count != 0 {
+				arr[i] = sum / float64(count)
+			} else {
+				arr[i] = 0.0
+			}
+		}
+	}
 }

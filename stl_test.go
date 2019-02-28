@@ -3,12 +3,14 @@ package stl
 import (
 	"encoding/csv"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"testing"
 )
 
 var data []float64
+var dataSmall = []float64{1, 2, 3, 4, 5, 6, 7, math.NaN(), 9, 10, 11, 12, 13, 14, 15}
 
 func init() {
 	f, _ := (os.Open("testdata/co2.csv"))
@@ -23,7 +25,7 @@ func init() {
 
 func TestDecompose(t *testing.T) {
 	trend, seasonal, remainder, err := Decompose(
-		[]float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+		dataSmall,
 		5,
 		SDegree(0),
 		TDegree(0),
