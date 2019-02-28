@@ -80,19 +80,26 @@ func (s *stl) decompose(series []float64, seasonality int) ([]float64, []float64
 	s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
 
 	if s.tWindow == -1 {
-		s.tWindow = nextOdd(1.5*float64(nPeriod)/(1.0-1.5/float64(s.sWindow)) + 0.5)
-		//s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, nPeriod, s.critFreq)
+		//s.tWindow = nextOdd(math.Ceil(1.5*float64(nPeriod)/(1.0-1.5/float64(s.sWindow)) + 0.5))
+		s.tWindow = calcTWindow(s.tDegree, s.sDegree, s.sWindow, nPeriod, s.critFreq)
 	} else {
 		s.tWindow = nextOdd(float64(s.tWindow))
 	}
 
-	if s.sJump == -1 {
+	if s.tWindow > nSeries {
+		s.tWindow = nextOdd(float64(nSeries - 2))
+	}
+	if s.lWindow > nSeries {
+		s.lWindow = nextOdd(float64(nSeries - 2))
+	}
+
+	if s.sJump == -1 || s.sJump == 0 {
 		s.sJump = int(math.Ceil(float64(s.sWindow) / 10.0))
 	}
-	if s.tJump == -1 {
+	if s.tJump == -1 || s.tJump == 0 {
 		s.tJump = int(math.Ceil(float64(s.tWindow) / 10.0))
 	}
-	if s.lJump == -1 {
+	if s.lJump == -1 || s.lJump == 0 {
 		s.lJump = int(math.Ceil(float64(s.lWindow) / 10.0))
 	}
 
