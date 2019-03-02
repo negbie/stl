@@ -1,4 +1,4 @@
-package stl
+package stlplus
 
 import (
 	"encoding/csv"

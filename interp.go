@@ -1,4 +1,4 @@
-package stl
+package stlplus
 
 func cInterp(m []int, fits, slopes []float64, at []int) []float64 {
 	var i, j int

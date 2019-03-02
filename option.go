@@ -1,4 +1,4 @@
-package stl
+package stlplus
 
 // Option is for functional options.
 type Option func(*stl)

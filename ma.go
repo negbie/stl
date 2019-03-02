@@ -1,4 +1,4 @@
-package stl
+package stlplus
 
 func cMa(x []float64, nP int) []float64 {
 	i, n := 0, len(x)
